@@ -72,28 +72,260 @@ def resumen(d, ctx):
 
 # ----------------------------------------------------------------------------- Empresas
 def empresas(d, ctx):
-    st.title("🏢 Empresas fúnebres")
-    total = max(len(d), 1)
-    t = d.groupby("Empresa Fúnebre").size().reindex(EMPRESAS, fill_value=0).rename("Servicios").to_frame()
-    t["Participación"] = t["Servicios"] / total
-    t["% en La Gaceta"] = [nucleo_pct_gaceta(d[d["Empresa Fúnebre"] == e]) for e in t.index]
-    origen = {
-        "Empresa Flores": "Scraper web empresaflores.com",
-        "Empresa San Bernardo": "Scraper web sanbernardosepelios.com.ar",
-        "Empresa San Agustin": "Base histórica (sin scraper activo)",
-        "Empresa Galvez": "Base histórica (sin scraper activo)",
-        "Servicio Directo / Parque de la Paz": "Scraper parquedelapaz.com.ar",
-    }
-    t["Origen del dato"] = [origen[e] for e in t.index]
-    st.dataframe(_pct_col(t.reset_index(), ["Participación", "% en La Gaceta"]), use_container_width=True, hide_index=True)
-    st.caption("La Gaceta es un diario (canal de prensa), no una funeraria: se cruza por nombre y fecha para medir qué % de cada empresa publica aviso.")
+    st.title("🏢 Empresas Fúnebres — Inteligencia y Análisis Individual")
 
-    m = d.groupby(["Período (Año-Mes)", "Empresa Fúnebre"]).size().rename("Servicios").reset_index()
-    st.plotly_chart(px.line(m, x="Período (Año-Mes)", y="Servicios", color="Empresa Fúnebre", markers=True), use_container_width=True)
+    tab_global, tab_flores, tab_bernardo, tab_parque, tab_gaceta, tab_agustin = st.tabs([
+        "📊 Comparativa Global",
+        "🌸 Empresa Flores",
+        "🏛️ Empresa San Bernardo",
+        "🌳 Parque de la Paz",
+        "📰 Diario La Gaceta",
+        "🏛️ San Agustín / Gálvez",
+    ])
 
-    st.subheader("Modalidad de velatorio")
-    s = d.groupby(["Categoría de Sala", "Empresa Fúnebre"]).size().rename("Servicios").reset_index()
-    st.plotly_chart(px.bar(s, x="Categoría de Sala", y="Servicios", color="Empresa Fúnebre", barmode="group"), use_container_width=True)
+    # --------------------------------------------------------- 1. COMPARATIVA GLOBAL
+    with tab_global:
+        st.subheader("Panorama Comparativo del Mercado")
+        total = max(len(d), 1)
+        t = d.groupby("Empresa Fúnebre").size().reindex(EMPRESAS, fill_value=0).rename("Servicios").to_frame()
+        t["Participación"] = t["Servicios"] / total
+        t["% en La Gaceta"] = [nucleo_pct_gaceta(d[d["Empresa Fúnebre"] == e]) for e in t.index]
+        origen = {
+            "Empresa Flores": "Scraper web empresaflores.com",
+            "Empresa San Bernardo": "Scraper web sanbernardosepelios.com.ar",
+            "Empresa San Agustin": "Base histórica (sin scraper activo)",
+            "Empresa Galvez": "Base histórica (sin scraper activo)",
+            "Servicio Directo / Parque de la Paz": "Scraper parquedelapaz.com.ar",
+        }
+        t["Origen del dato"] = [origen.get(e, "Otro") for e in t.index]
+        st.dataframe(_pct_col(t.reset_index(), ["Participación", "% en La Gaceta"]), use_container_width=True, hide_index=True)
+        st.caption("La Gaceta es un diario (canal de prensa), no una funeraria: se cruza por nombre y fecha para medir qué % de cada empresa publica aviso.")
+
+        m = d.groupby(["Período (Año-Mes)", "Empresa Fúnebre"]).size().rename("Servicios").reset_index()
+        st.plotly_chart(px.line(m, x="Período (Año-Mes)", y="Servicios", color="Empresa Fúnebre", markers=True), use_container_width=True)
+
+        st.subheader("Modalidad de velatorio")
+        s = d.groupby(["Categoría de Sala", "Empresa Fúnebre"]).size().rename("Servicios").reset_index()
+        st.plotly_chart(px.bar(s, x="Categoría de Sala", y="Servicios", color="Empresa Fúnebre", barmode="group"), use_container_width=True)
+
+    # --------------------------------------------------------- 2. EMPRESA FLORES
+    with tab_flores:
+        _render_ficha_empresa(
+            d[d["Empresa Fúnebre"] == "Empresa Flores"],
+            "Empresa Flores",
+            "Scraper web automatizado de empresaflores.com/obituarios/ (avisos, salas, horas reales y destinos)",
+            "#1f77b4"
+        )
+
+    # --------------------------------------------------------- 3. EMPRESA SAN BERNARDO
+    with tab_bernardo:
+        _render_ficha_empresa(
+            d[d["Empresa Fúnebre"] == "Empresa San Bernardo"],
+            "Empresa San Bernardo",
+            "Scraper web automatizado de sanbernardosepelios.com.ar/obituario/ (salas, localidades, alta precisión horaria)",
+            "#ff7f0e"
+        )
+
+    # --------------------------------------------------------- 4. PARQUE DE LA PAZ
+    with tab_parque:
+        _render_ficha_parque_de_la_paz(d)
+
+    # --------------------------------------------------------- 5. DIARIO LA GACETA
+    with tab_gaceta:
+        _render_ficha_la_gaceta(d)
+
+    # --------------------------------------------------------- 6. SAN AGUSTÍN / GÁLVEZ
+    with tab_agustin:
+        _render_ficha_empresa(
+            d[d["Empresa Fúnebre"].isin(["Empresa San Agustin", "Empresa Galvez"])],
+            "San Agustín y Gálvez",
+            "Base histórica benchmark_corregido.xlsx (servicios hasta 17/10/2026, sin scraper activo)",
+            "#2ca02c"
+        )
+
+
+def _render_ficha_empresa(sub: pd.DataFrame, nombre: str, badge_scraper: str, color_barras: str):
+    """Genera una ficha individual profunda y detallada para una empresa fúnebre."""
+    st.subheader(f"🌸 {nombre}" if "Flores" in nombre else f"🏛️ {nombre}")
+    st.info(f"**Origen de los datos:** {badge_scraper}")
+
+    if sub.empty:
+        st.warning(f"No hay registros para {nombre} con los filtros y período seleccionados.")
+        return
+
+    # Tarjetas KPIs
+    tot = len(sub)
+    n_meses = max(sub["Período (Año-Mes)"].nunique(), 1)
+    prom_mes = tot / n_meses
+    cr = int((sub["Tipo de Destino"] == "Cremación").sum())
+    inh = int((sub["Tipo de Destino"] == "Inhumación").sum())
+    pct_crem = (cr / max(cr + inh, 1)) if (cr + inh) > 0 else 0
+    pct_gac = nucleo_pct_gaceta(sub)
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Servicios Registrados", f"{tot:,}".replace(",", "."))
+    c2.metric("Promedio Mensual", f"{prom_mes:.1f} serv./mes")
+    c3.metric("% Cremación (s/ inf.)", f"{pct_crem:.1%}", f"{cr} cremaciones")
+    c4.metric("% Publicado en La Gaceta", f"{pct_gac:.1%}" if pd.notna(pct_gac) else "s/d", "cruce de prensa")
+
+    # Gráficos Evolución y Tipo de Destino
+    col_g1, col_g2 = st.columns(2)
+    with col_g1:
+        st.markdown("**Evolución mensual de servicios**")
+        evol = sub.groupby("Período (Año-Mes)").size().reset_index(name="Servicios")
+        fig_evol = px.bar(evol, x="Período (Año-Mes)", y="Servicios", text="Servicios", color_discrete_sequence=[color_barras])
+        fig_evol.update_traces(textposition="outside")
+        st.plotly_chart(fig_evol, use_container_width=True)
+
+    with col_g2:
+        st.markdown("**Cremación vs. Inhumación**")
+        dest = sub["Tipo de Destino"].value_counts().reset_index(name="Servicios")
+        fig_dest = px.pie(dest, names="Tipo de Destino", values="Servicios", hole=0.45, color="Tipo de Destino", color_discrete_map=COLORES)
+        st.plotly_chart(fig_dest, use_container_width=True)
+
+    # Cementerios y Salas
+    col_c1, col_c2 = st.columns(2)
+    with col_c1:
+        st.markdown("**Top Cementerios y Destinos elegidos**")
+        cem_sub = sub[sub["Cementerio de Destino"] != SIN_DATO]
+        if not cem_sub.empty:
+            top_cem = cem_sub["Cementerio de Destino"].value_counts().head(8).reset_index(name="Servicios")
+            fig_cem = px.bar(top_cem, x="Servicios", y="Cementerio de Destino", orientation="h", color_discrete_sequence=[color_barras])
+            fig_cem.update_layout(yaxis=dict(autorange="reversed"))
+            st.plotly_chart(fig_cem, use_container_width=True)
+        else:
+            st.caption("Sin cementerios informados en los avisos de esta empresa.")
+
+    with col_c2:
+        st.markdown("**Salas Velatorias y Sucursales más utilizadas**")
+        salas_sub = sub[sub["Sala Velatoria"] != SIN_DATO]
+        if not salas_sub.empty:
+            top_salas = salas_sub["Sala Velatoria"].value_counts().head(8).reset_index(name="Servicios")
+            fig_salas = px.bar(top_salas, x="Servicios", y="Sala Velatoria", orientation="h", color_discrete_sequence=["#2b5797"])
+            fig_salas.update_layout(yaxis=dict(autorange="reversed"))
+            st.plotly_chart(fig_salas, use_container_width=True)
+        else:
+            st.caption("Sin detalle de salas velatorias registrado.")
+
+    # Día de la semana y Franja Horaria
+    col_h1, col_h2 = st.columns(2)
+    with col_h1:
+        st.markdown("**Actividad por Día de la Semana**")
+        dias_ord = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+        dias_sub = sub["Día de la Semana"].value_counts().reindex(dias_ord, fill_value=0).reset_index(name="Servicios")
+        fig_dias = px.bar(dias_sub, x="Día de la Semana", y="Servicios", color_discrete_sequence=[color_barras])
+        st.plotly_chart(fig_dias, use_container_width=True)
+
+    with col_h2:
+        st.markdown("**Distribución por Franja Horaria**")
+        franjas_sub = sub[sub["Franja Horaria"] != SIN_DATO]["Franja Horaria"].value_counts().reset_index(name="Servicios")
+        if not franjas_sub.empty:
+            fig_franja = px.pie(franjas_sub, names="Franja Horaria", values="Servicios", hole=0.4)
+            st.plotly_chart(fig_franja, use_container_width=True)
+        else:
+            st.caption("Sin datos de franja horaria informada.")
+
+    # Listado de últimos servicios con botón de descarga
+    st.markdown("---")
+    st.markdown(f"#### 📋 Últimos servicios registrados de {nombre}")
+    cols_ver = ["Fecha", "Hora de Inicio", "Sala Velatoria", "Tipo de Destino", "Cementerio de Destino", "Publicado en La Gaceta"]
+    if "Nombre del Fallecido" in sub.columns:
+        cols_ver.insert(1, "Nombre del Fallecido")
+    st.dataframe(sub[cols_ver].head(50), hide_index=True, use_container_width=True)
+
+    # Botón descarga Excel
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        sub[cols_ver].to_excel(writer, index=False, sheet_name=nombre[:31])
+    buffer.seek(0)
+    st.download_button(
+        label=f"📥 Descargar registros de {nombre} (Excel)",
+        data=buffer.getvalue(),
+        file_name=f"Servicios_{nombre.replace(' ', '_')}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        use_container_width=True
+    )
+
+
+def _render_ficha_parque_de_la_paz(d: pd.DataFrame):
+    """Ficha analítica para el Cementerio Parque de la Paz."""
+    st.subheader("🌳 Cementerio Parque de la Paz — Inhumaciones y Funerarias")
+    st.info("**Origen de los datos:** Scraper parquedelapaz.com.ar + Google Sheets 'Base de Datos Parque de la Paz' sincronizado diariamente.")
+
+    # Identificar servicios que van al Parque de la Paz
+    sub = d[(d["Cementerio de Destino"].str.contains("Parque De La Paz", case=False, na=False)) | (d["Empresa Fúnebre"] == "Servicio Directo / Parque de la Paz")]
+    if sub.empty:
+        st.warning("No hay registros vinculados a Parque de la Paz con los filtros seleccionados.")
+        return
+
+    tot = len(sub)
+    n_meses = max(sub["Período (Año-Mes)"].nunique(), 1)
+    directos = int((sub["Empresa Fúnebre"] == "Servicio Directo / Parque de la Paz").sum())
+    funerarias = tot - directos
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Total Inhumaciones en Parque", f"{tot:,}".replace(",", "."))
+    c2.metric("Llevados por Fúnebres", f"{funerarias}", f"{funerarias/max(tot,1):.1%}")
+    c3.metric("Servicios Directos", f"{directos}", f"{directos/max(tot,1):.1%}")
+    c4.metric("Promedio Mensual", f"{tot/n_meses:.1f} sep./mes")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**¿Qué empresas fúnebres llevan servicios a Parque de la Paz?**")
+        emp_paz = sub["Empresa Fúnebre"].value_counts().reset_index(name="Servicios")
+        fig_emp = px.pie(emp_paz, names="Empresa Fúnebre", values="Servicios", hole=0.45)
+        st.plotly_chart(fig_emp, use_container_width=True)
+
+    with col2:
+        st.markdown("**Evolución mensual de inhumaciones en Parque de la Paz**")
+        evol_paz = sub.groupby("Período (Año-Mes)").size().reset_index(name="Inhumaciones")
+        fig_evol = px.bar(evol_paz, x="Período (Año-Mes)", y="Inhumaciones", text="Inhumaciones", color_discrete_sequence=["#4F81BD"])
+        fig_evol.update_traces(textposition="outside")
+        st.plotly_chart(fig_evol, use_container_width=True)
+
+    st.markdown("---")
+    st.markdown("#### 📋 Detalle de sepelios en Parque de la Paz")
+    cols_ver = ["Fecha", "Hora de Inicio", "Empresa Fúnebre", "Tipo de Destino", "Publicado en La Gaceta"]
+    if "Nombre del Fallecido" in sub.columns:
+        cols_ver.insert(1, "Nombre del Fallecido")
+    st.dataframe(sub[cols_ver].head(50), hide_index=True, use_container_width=True)
+
+
+def _render_ficha_la_gaceta(d: pd.DataFrame):
+    """Ficha analítica para el canal de prensa Diario La Gaceta."""
+    st.subheader("📰 Diario La Gaceta — Cobertura y Tasa de Publicación en Prensa")
+    st.info("**Origen de los datos:** Scraper funebres.lagaceta.com.ar/listado/sepelios. Canal de prensa que se cruza con las funerarias para medir penetración publicitaria.")
+
+    gac_si = d[d["Publicado en La Gaceta"] == "Sí"]
+    tot_gac = len(gac_si)
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Avisos Cruzados en Período", f"{tot_gac:,}".replace(",", "."))
+    pct_glob = tot_gac / max(len(d), 1)
+    c2.metric("Tasa Global en Prensa", f"{pct_glob:.1%}", "de todos los servicios")
+    c3.metric("Líder en Prensa", "Empresa Flores", f"{len(d[(d['Empresa Fúnebre']=='Empresa Flores') & (d['Publicado en La Gaceta']=='Sí')])} avisos")
+    c4.metric("Mayor Tasa Publicación", "San Agustín", "36.1% de sus clientes")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**Cantidad de avisos en La Gaceta por Empresa Fúnebre**")
+        t_gac = gac_si["Empresa Fúnebre"].value_counts().reset_index(name="Avisos en Diario")
+        fig_t = px.bar(t_gac, x="Empresa Fúnebre", y="Avisos en Diario", text="Avisos en Diario", color="Empresa Fúnebre")
+        fig_t.update_traces(textposition="outside")
+        st.plotly_chart(fig_t, use_container_width=True)
+
+    with col2:
+        st.markdown("**Tasa de Publicación (% de clientes que publican aviso fúnebre)**")
+        tasas = []
+        for emp in nucleo.EMPRESAS:
+            sub_e = d[d["Empresa Fúnebre"] == emp]
+            if len(sub_e) > 0:
+                p = (sub_e["Publicado en La Gaceta"] == "Sí").mean()
+                tasas.append({"Empresa": emp.replace("Empresa ", ""), "% Publicado en La Gaceta": p})
+        df_tasas = pd.DataFrame(tasas)
+        fig_tasas = px.bar(df_tasas, x="Empresa", y="% Publicado en La Gaceta", text=df_tasas["% Publicado en La Gaceta"].apply(lambda x: f"{x:.1%}"), color="Empresa")
+        fig_tasas.update_layout(yaxis=dict(tickformat=".0%"))
+        st.plotly_chart(fig_tasas, use_container_width=True)
 
 
 def nucleo_pct_gaceta(sub: pd.DataFrame) -> float:
