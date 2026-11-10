@@ -61,6 +61,27 @@ if base.empty:
 st.sidebar.markdown(f"👤 **{usuario}** · `{rol.upper()}`")
 st.sidebar.caption(f"Datos actualizados: {nucleo.ultima_actualizacion()}")
 
+if st.sidebar.button("🔄 Actualizar datos en pantalla", use_container_width=True, help="Limpia la memoria caché y recarga los datos más recientes al día de hoy"):
+    st.cache_data.clear()
+    st.rerun()
+
+with st.sidebar.expander("🔑 Cambiar mi contraseña"):
+    with st.form("form_cambiar_clave_propia"):
+        pass_act = st.text_input("Contraseña actual", type="password")
+        pass_new1 = st.text_input("Nueva contraseña (mín 8 car.)", type="password")
+        pass_new2 = st.text_input("Confirmar nueva contraseña", type="password")
+        btn_cambiar = st.form_submit_button("Actualizar mi contraseña", use_container_width=True)
+
+    if btn_cambiar:
+        if pass_new1 != pass_new2:
+            st.warning("Las nuevas contraseñas no coinciden.")
+        else:
+            ok, msg = auth.cambiar_mi_clave(usuario, pass_act, pass_new1)
+            if ok:
+                st.success(msg)
+            else:
+                st.error(msg)
+
 PAGINAS = {
     "📊 Resumen": paginas.resumen,
     "🏢 Empresas": paginas.empresas,

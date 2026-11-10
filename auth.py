@@ -330,6 +330,43 @@ def cambiar_clave_admin(identificador: str, nueva_clave: str) -> bool:
     return False
 
 
+def cambiar_mi_clave(usuario_o_email: str, clave_actual: str, nueva_clave: str) -> tuple[bool, str]:
+    """Permite a cualquier usuario conectado (admin, operador o lector) cambiar su propia contraseña."""
+    term = usuario_o_email.strip().lower()
+    if not clave_actual or not nueva_clave:
+        return False, "Debe ingresar la contraseña actual y la nueva contraseña."
+    if len(nueva_clave) < 8:
+        return False, "La nueva contraseña debe tener al menos 8 caracteres."
+    if clave_actual == nueva_clave:
+        return False, "La nueva contraseña debe ser diferente a la actual."
+
+    d = _leer_datos()
+    target_id = None
+    target_data = None
+    for u, v in d.get("usuarios", {}).items():
+        if u == term or v.get("email", "").lower() == term:
+            target_id = u
+            target_data = v
+            break
+
+    if not target_data:
+        return False, "Usuario no encontrado en la base."
+
+    # Validar contraseña actual con hash seguro
+    salt = target_data["salt"]
+    if not hmac.compare_digest(_hash(clave_actual, salt), target_data["hash"]):
+        return False, "La contraseña actual ingresada es incorrecta."
+
+    # Actualizar con nuevo salt criptográfico y hash
+    nuevo_salt = pysecrets.token_hex(16)
+    d["usuarios"][target_id]["salt"] = nuevo_salt
+    d["usuarios"][target_id]["hash"] = _hash(nueva_clave, nuevo_salt)
+    if _guardar_datos(d):
+        return True, "¡Tu contraseña ha sido cambiada con éxito!"
+
+    return False, "Error al guardar la nueva contraseña."
+
+
 def eliminar_usuario(identificador: str) -> tuple[bool, str]:
     d = _leer_datos()
     u = identificador.strip().lower()
