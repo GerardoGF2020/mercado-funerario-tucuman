@@ -1,0 +1,25 @@
+{
+  "usuarios": {
+    "admin": {
+      "salt": "c2131a0fd8af68dbec4f5f264235bec0",
+      "hash": "4fcd69d0a94dea959a80e89adb210c1e26d636f30733600398a6266c4f012cce",
+      "rol": "admin",
+      "nombre": "Administrador Principal",
+      "email": "admin@mercado-funerario.com",
+      "estado": "activo",
+      "fecha_alta": "2026-11-09 15:11"
+    }
+  },
+  "pendientes": {
+    "carlos.ruiz@ejemplo.com": {
+      "nombre": "Carlos Ruiz",
+      "email": "carlos.ruiz@ejemplo.com",
+      "usuario": "carlos.ruiz@ejemplo.com",
+      "salt": "25dcf0151b8d5a82c02c3fa9f3ab5382",
+      "hash": "47be8de1a7bea7fc879db6dcd301368e2e7949528c41c191b41a659811ef8a0f",
+      "fecha_solicitud": "2026-11-09 15:12",
+      "estado": "pendiente"
+    }
+  },
+  "recuperaciones": {}
+}

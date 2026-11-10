@@ -1,0 +1,51 @@
+[
+  {
+    "fecha": "2026-11-09 15:12:12",
+    "tipo": "general",
+    "destinatario": "cruiz@miempresa.com.ar",
+    "asunto": "📝 Solicitud de Registro Recibida - Mercado Funerario Tucumán",
+    "codigo": null
+  },
+  {
+    "fecha": "2026-11-09 15:12:35",
+    "tipo": "general",
+    "destinatario": "mgonzalez@funerarias.com.ar",
+    "asunto": "📝 Solicitud de Registro Recibida - Mercado Funerario Tucumán",
+    "codigo": null
+  },
+  {
+    "fecha": "2026-11-09 15:12:35",
+    "tipo": "general",
+    "destinatario": "mgonzalez@funerarias.com.ar",
+    "asunto": "✅ Tu cuenta ha sido APROBADA - Mercado Funerario Tucumán",
+    "codigo": null
+  },
+  {
+    "fecha": "2026-11-09 15:12:35",
+    "tipo": "recuperacion",
+    "destinatario": "mgonzalez@funerarias.com.ar",
+    "asunto": "🔑 Código de Recuperación de Contraseña: 343468",
+    "codigo": "343468"
+  },
+  {
+    "fecha": "2026-11-09 15:12:35",
+    "tipo": "general",
+    "destinatario": "mgonzalez@funerarias.com.ar",
+    "asunto": "🔑 Código de Recuperación de Contraseña: 343468",
+    "codigo": "343468"
+  },
+  {
+    "fecha": "2026-11-09 15:46:33",
+    "tipo": "general",
+    "destinatario": "valeria.suarez@empresa.com.ar",
+    "asunto": "📝 Solicitud de Registro Recibida - Mercado Funerario Tucumán",
+    "codigo": null
+  },
+  {
+    "fecha": "2026-11-09 15:47:15",
+    "tipo": "general",
+    "destinatario": "valeria.suarez@empresa.com.ar",
+    "asunto": "✅ Tu cuenta ha sido APROBADA - Mercado Funerario Tucumán",
+    "codigo": null
+  }
+]
